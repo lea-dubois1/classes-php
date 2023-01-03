@@ -12,40 +12,55 @@ class User
     private $conn;
 
     public function __construct() {
-        $db_host = 'localhost';
+
         $db_username = 'root';
         $db_password = '';
-        $db_name = 'classes';
+        
+        // On essaie de se connecter
+        try{
 
-        $this->conn = new mysqli($db_host, $db_username, $db_password, $db_name);
+            $this->conn = new PDO('mysql:host=localhost;dbname=classes;charset=utf8', $db_username, $db_password);
 
-        if($this->conn->connect_error){
-            die('Erreur : ' . $this->conn->connect_error);
+            // On définit le mode d'erreur de PDO sur Exception
+            $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+            echo 'Connection réussie<br>';
         }
-        echo 'Connection réussie<br>';
+
+        // On capture les exceptions si une exception est lancée
+        catch(PDOException $e){
+
+            // et on affiche les informations relatives à celle-ci
+            echo "Erreur : " . $e->getMessage();
+
+        }
+
     }
 
     public function register($login, $password, $email, $firstname, $lastname) {
 
-        // Set the request in a variable.
-        $sql = "Select * from utilisateurs where login='$login'";
+        $sql = "SELECT * FROM utilisateurs WHERE login=:login";
         
         // Check if the username is already present or not in our Database.
-        $result = $this->conn->query($sql);
-        $row = $result->num_rows;
-        
+        $req = $this->conn->prepare($sql);
+        $req->execute(array(':login' => $login));
+        $row = $req->rowCount();
         
         if($row <= 0) {     // If the login do not exist in the Database, we check for errors
 
             // Cripting the password
             $hash = password_hash($password, PASSWORD_DEFAULT);
                 
-            // Cripted password is used here. 
-            $sql = "INSERT INTO `utilisateurs` (`login`, `password`, `email`, `firstname`, `lastname`) VALUES ('$login', '$hash', '$email','$firstname', '$lastname')";
+            // Add data to the database 
+            $sql = "INSERT INTO `utilisateurs` (`login`, `password`, `email`, `firstname`, `lastname`) VALUES (:login, :pass, :email, :firstname, :lastname)";
+            $req = $this->conn->prepare($sql);
+            $req->execute(array(':login' => $login,
+                                ':pass' => $hash,
+                                ':email' => $email,
+                                ':firstname' => $firstname,
+                                ':lastname' => $lastname));
     
-            $result = $this->conn->query($sql);
-    
-            if ($result) {      // If the user is created
+            if ($sql) {      // If the user is created
                 echo '<strong>Success!</strong> Your account is now created and you can login.';
                 
                 $userData = [
@@ -66,34 +81,27 @@ class User
 
     public function connect($login, $password) {
 
-        // Set the request in a variable.
-        $sql = "select * from utilisateurs where login = '$login'";
-
+        $sql = "SELECT * FROM utilisateurs WHERE login=:login";
+        
         // Check if the username is already present or not in our Database.
-        $result = $this->conn->query($sql);
-        $row = $result->num_rows;
+        $req = $this->conn->prepare($sql);
+        $req->execute(array(':login' => $login));
+        $row = $req->rowCount();
         
         if($row == 1){    // If the login exist in the data base, continue
 
-            $row = $result->fetch_assoc();
-            $dataPass = $row['password'];
-            $id = $row['id'];
+            $tab = $req->fetch(PDO::FETCH_ASSOC);
+            $dataPass = $tab['password'];
+            $id = $tab['id'];
 
             if(password_verify($password,$dataPass)){    // Check if the password existe in the database and decript it
 
                 $_SESSION['id'] = $id;
                 $_SESSION['login'] = $login;
                 $_SESSION['password'] = $dataPass;
-                $_SESSION['email'] = $row['email'];
-                $_SESSION['firstname'] = $row['firstname'];
-                $_SESSION['lastname'] = $row['lastname'];
-
-                $this->id = $_SESSION['id'];
-                $this->login = $_SESSION['login'];
-                $this->email = $_SESSION['email'];
-                $this->firstname = $row['firstname'];
-                $this->lastname = $row['lastname'];
-
+                $_SESSION['email'] = $tab['email'];
+                $_SESSION['firstname'] = $tab['firstname'];
+                $_SESSION['lastname'] = $tab['lastname'];
 
                 echo '<strong>Success!</strong> You\'re connected';
 
@@ -109,7 +117,7 @@ class User
     public function disconnect() {
 
         session_destroy();
-        exit('Vous avez bien été déconnecté');
+        exit('Vous avez bien été deconnecté');
 
     }
 
@@ -120,12 +128,14 @@ class User
             // Set variables to use in the following request.
             $sessionId = $_SESSION['id'];
 
-            // Colect all datas from the user
-            $sql = "DELETE FROM `utilisateurs` WHERE id = '$sessionId'";
-            $result = $this->conn->query($sql);
+            $sql = "DELETE FROM `utilisateurs` WHERE id = :sessionId";
+        
+            // Check if the username is already present or not in our Database.
+            $req = $this->conn->prepare($sql);
+            $req->execute(array(':sessionId' => $sessionId));
 
             session_destroy();
-            exit('<strong>Success!</strong> You have deleted your account');
+            exit('You have deleted your account');
 
 
         }else{
@@ -138,13 +148,14 @@ class User
 
         // Set variables to use in the following request.
         $sessionId = $_SESSION['id'];
-
         $passwordTrue = $_SESSION['password'];
 
-        // Colect all datas from the user
-        $sql = "SELECT * FROM utilisateurs WHERE id = '$sessionId'";
-        $result = $this->conn->query($sql);
-        $row = $result->num_rows;
+        $sql = "SELECT * FROM utilisateurs WHERE id = :sessionId";
+        
+        // Check if the username is already present or not in our Database.
+        $req = $this->conn->prepare($sql);
+        $req->execute(array(':sessionId' => $sessionId));
+        $row = $req->rowCount();
             
         if ($_SESSION['login'] != $login){
 
@@ -154,12 +165,13 @@ class User
 
             }else{
 
-                $sqlLog = "UPDATE utilisateurs SET login = '$login' WHERE id = '$sessionId'";
-                $rs = $this->conn->query($sqlLog);
-
+                $sqlLog = "UPDATE utilisateurs SET login = :login WHERE id = :sessionId";
+        
+                // Check if the username is already present or not in our Database.
+                $req = $this->conn->prepare($sqlLog);
+                $req->execute(array(':login' => $login, ':sessionId' => $sessionId));
+                
                 $_SESSION['login'] = $login;
-                $this->login = $login;
-
                 echo '<strong>Success!</strong> Your login has been edited<br>';
 
             }
@@ -175,7 +187,6 @@ class User
             $rs = $this->conn->query($sqlPass);
 
             $_SESSION['password'] = $hash;
-
             echo '<strong>Success!</strong> Your password has been edited<br>';
 
         }
@@ -184,10 +195,7 @@ class User
 
             $sqlMail = "UPDATE utilisateurs SET email = '$email' WHERE id = '$sessionId'";
             $rs = $this->conn->query($sqlMail);
-
             $_SESSION['email'] = $email;
-            $this->email = $email;
-
             echo '<strong>Success!</strong> Your email has been edited<br>';
 
         }
@@ -196,10 +204,7 @@ class User
 
             $sqlFirstN = "UPDATE utilisateurs SET firstname = '$firstname' WHERE id = '$sessionId'";
             $rs = $this->conn->query($sqlFirstN);
-
             $_SESSION['firstname'] = $firstname;
-            $this->firstname = $firstname;
-
             echo '<strong>Success!</strong> Your first name has been edited<br>';
 
         }
@@ -208,10 +213,7 @@ class User
 
             $sqlLastN = "UPDATE utilisateurs SET lastname = '$lastname' WHERE id = '$sessionId'";
             $rs = $this->conn->query($sqlLastN);
-
             $_SESSION['lastname'] = $lastname;
-            $this->lastname = $lastname;
-
             echo '<strong>Success!</strong> Your last name has been edited<br>';
 
         }
@@ -281,9 +283,9 @@ class User
 }
 
 $newUser = new User();
-//$newUser->register('leadbs', 'azerty', 'unemail@gmail.com', 'Léa', 'Dubois');
-//$newUser->connect('leadbs', 'azerty');
-//$newUser->disconnect();
+//$newUser->register('admin', 'admin', 'admin@gmail.com', 'Admin', 'Admin');
+//$newUser->connect('admin', 'admin');
+//$newUser->update('admin', 'admin', 'admin@gmail.com', 'Admin', 'Admin');
 //$newUser->delete();
 var_dump($_SESSION);
 
