@@ -25,7 +25,7 @@ class User
         echo 'Connection réussie<br>';
     }
 
-    public function register($login, $password, $email, $firstname, $lastname) {
+    public function Register($login, $password, $email, $firstname, $lastname) {
 
         // Set the request in a variable.
         $sql = "Select * from utilisateurs where login='$login'";
@@ -64,7 +64,7 @@ class User
         }
     }
 
-    public function connect($login, $password) {
+    public function Connect($login, $password) {
 
         // Set the request in a variable.
         $sql = "select * from utilisateurs where login = '$login'";
@@ -106,14 +106,14 @@ class User
 
     }
 
-    public function disconnect() {
+    public function Disconnect() {
 
         session_destroy();
         exit('Vous avez bien été déconnecté');
 
     }
 
-    public function delete() {
+    public function Delete() {
 
         if($_SESSION){
 
@@ -134,7 +134,7 @@ class User
 
     }
 
-    public function update($login, $password, $email, $firstname, $lastname) {
+    public function Update($login, $password, $email, $firstname, $lastname) {
 
         // Set variables to use in the following request.
         $sessionId = $_SESSION['id'];
@@ -218,7 +218,7 @@ class User
 
     }
 
-    public function isConnected() {
+    public function IsConnected() {
 
         if($_SESSION){
             return true;
@@ -228,7 +228,7 @@ class User
 
     }
 
-    public function getAllInfos() {
+    public function GetAllInfos() {
 
         if($_SESSION){
             return $_SESSION;
@@ -238,7 +238,7 @@ class User
 
     }
 
-    public function getLogin() {
+    public function GetLogin() {
 
         if($_SESSION){
             return $_SESSION['login'];
@@ -248,7 +248,7 @@ class User
 
     }
 
-    public function getEmail() {
+    public function GetEmail() {
 
         if($_SESSION){
             return $_SESSION['email'];
@@ -258,7 +258,7 @@ class User
 
     }
 
-    public function getFirstname() {
+    public function GetFirstname() {
 
         if($_SESSION){
             return $_SESSION['firstname'];
@@ -268,7 +268,7 @@ class User
 
     }
 
-    public function getLastname() {
+    public function GetLastname() {
 
         if($_SESSION){
             return $_SESSION['lastname'];
@@ -281,10 +281,10 @@ class User
 }
 
 $newUser = new User();
-//$newUser->register('leadbs', 'azerty', 'unemail@gmail.com', 'Léa', 'Dubois');
-//$newUser->connect('leadbs', 'azerty');
-//$newUser->disconnect();
-//$newUser->delete();
+//$newUser->Register('leadbs', 'azerty', 'unemail@gmail.com', 'Léa', 'Dubois');
+//$newUser->Connect('leadbs', 'azerty');
+//$newUser->Disconnect();
+//$newUser->Delete();
 var_dump($_SESSION);
 
 ?>
