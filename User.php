@@ -22,12 +22,12 @@ class User
         if($this->conn->connect_error){
             die('Erreur : ' . $this->conn->connect_error);
         }
-        echo 'Connection réussie<br>';
+        echo 'Connection à la bdd réussie<br>';
     }
 
-    public function Register($login, $password, $email, $firstname, $lastname) {
+    public function Register($login, $password, $passwordConfirm, $email, $firstname, $lastname) {
 
-        // Set the request in a variable.
+        // Set the request
         $sql = "Select * from utilisateurs where login='$login'";
         
         // Check if the username is already present or not in our Database.
@@ -37,31 +37,35 @@ class User
         
         if($row <= 0) {     // If the login do not exist in the Database, we check for errors
 
-            // Cripting the password
-            $hash = password_hash($password, PASSWORD_DEFAULT);
+            if(($password == $passwordConfirm)) {    // If the password is match with the password's confirmation
                 
-            // Cripted password is used here. 
-            $sql = "INSERT INTO `utilisateurs` (`login`, `password`, `email`, `firstname`, `lastname`) VALUES ('$login', '$hash', '$email','$firstname', '$lastname')";
-    
-            $result = $this->conn->query($sql);
-    
-            if ($result) {      // If the user is created
-                echo '<strong>Success!</strong> Your account is now created and you can login.';
-                
-                $userData = [
-                    'login' => $login,
-                    'password' => $hash,
-                    'email' => $email,
-                    'firstname' => $firstname,
-                    'lastname' => $lastname,
-                ];
+                // Cripting the password
+                $hash = password_hash($password, PASSWORD_DEFAULT);
+                    
+                // Cripted password is used here. 
+                $sql = "INSERT INTO `utilisateurs` (`login`, `password`, `email`, `firstname`, `lastname`) VALUES ('$login', '$hash', '$email','$firstname', '$lastname')";
+        
+                $result = $this->conn->query($sql);
+        
+                if ($result) {      // If the user is created
+                    echo '<strong>Success!</strong> Your account is now created and you can login.';
+                    
+                    $userData = [
+                        'login' => $login,
+                        'password' => $hash,
+                        'email' => $email,
+                        'firstname' => $firstname,
+                        'lastname' => $lastname,
+                    ];
 
-                return $userData;
-            }
+                    return $userData;
+
+                }
+
+            }else{ echo "Passwords do not match"; }
             
-        }else{      // If login already exist
-            echo '<strong>Error!</strong> Le login existe déjà'; 
-        }
+        }else{ echo '<strong>Error!</strong> The login already exist.'; }
+
     }
 
     public function Connect($login, $password) {
@@ -134,88 +138,100 @@ class User
 
     }
 
-    public function Update($login, $password, $email, $firstname, $lastname) {
+    public function Update($login, $password, $passwordNew, $passwordNewConfirm, $email, $firstname, $lastname) {
 
-        // Set variables to use in the following request.
-        $sessionId = $_SESSION['id'];
+        if ($_SESSION){
 
-        $passwordTrue = $_SESSION['password'];
+            // Set variables to use in the following request.
+            $sessionId = $_SESSION['id'];
+            $passwordTrue = $_SESSION['password'];
 
-        // Colect all datas from the user
-        $sql = "SELECT * FROM utilisateurs WHERE id = '$sessionId'";
-        $result = $this->conn->query($sql);
-        $row = $result->num_rows;
-            
-        if ($_SESSION['login'] != $login){
+            // Colect all datas from the user
+            $sql = "SELECT * FROM utilisateurs WHERE id = '$sessionId'";
+            $result = $this->conn->query($sql);
+            $row = $result->num_rows;
 
-            if($row!=1){
+            if(password_verify($password,$passwordTrue)){
 
-                echo '<strong>Error!</strong> The login already exist';
+                if ($_SESSION['login'] != $login){
 
-            }else{
+                    if($row!=1){
+        
+                        echo '<strong>Error!</strong> The login already exist';
+        
+                    }else{
+        
+                        $sqlLog = "UPDATE utilisateurs SET login = '$login' WHERE id = '$sessionId'";
+                        $rs = $this->conn->query($sqlLog);
+        
+                        $_SESSION['login'] = $login;
+                        $this->login = $login;
+        
+                        echo '<strong>Success!</strong> Your login has been edited<br>';
+        
+                    }
+        
+                }
 
-                $sqlLog = "UPDATE utilisateurs SET login = '$login' WHERE id = '$sessionId'";
-                $rs = $this->conn->query($sqlLog);
+                if(!empty($passwordNew) && !empty($passwordNewConfirm) && $passwordNew == $passwordNewConfirm){
 
-                $_SESSION['login'] = $login;
-                $this->login = $login;
+                    $hashNew = password_hash($passwordNewConfirm, PASSWORD_DEFAULT);
 
-                echo '<strong>Success!</strong> Your login has been edited<br>';
+                    $sqlPass = "UPDATE utilisateurs SET password = '$hashNew' WHERE id = '$sessionId'";
+                    $rs = $this->conn->query($sqlPass);
+                    $_SESSION['password'] = $hashNew;
+                    echo '<strong>Success!</strong> Your password has been edited<br>';
 
-            }
+                }elseif (!empty($passwordNew) && empty($passwordNewConfirm)){
 
-        }
+                    echo "<strong>Error!</strong> Please confirm password<br>";
 
-        if(!password_verify($password,$passwordTrue)){
-            
-            // Cripting the new password
-            $hash = password_hash($password, PASSWORD_DEFAULT);
+                }elseif($passwordNew != $passwordNewConfirm){
 
-            $sqlPass = "UPDATE utilisateurs SET password = '$hash' WHERE id = '$sessionId'";
-            $rs = $this->conn->query($sqlPass);
+                    echo '<strong>Error</strong> The passwords are differents<br>';
 
-            $_SESSION['password'] = $hash;
+                }
 
-            echo '<strong>Success!</strong> Your password has been edited<br>';
+                if ($_SESSION['email'] != $email){
 
-        }
-            
-        if ($_SESSION['email'] != $email){
+                    $sqlMail = "UPDATE utilisateurs SET email = '$email' WHERE id = '$sessionId'";
+                    $rs = $this->conn->query($sqlMail);
 
-            $sqlMail = "UPDATE utilisateurs SET email = '$email' WHERE id = '$sessionId'";
-            $rs = $this->conn->query($sqlMail);
+                    $_SESSION['email'] = $email;
+                    $this->email = $email;
 
-            $_SESSION['email'] = $email;
-            $this->email = $email;
+                    echo '<strong>Success!</strong> Your email has been edited<br>';
 
-            echo '<strong>Success!</strong> Your email has been edited<br>';
+                }
+                    
+                if ($_SESSION['firstname'] != $firstname){
 
-        }
-            
-        if ($_SESSION['firstname'] != $firstname){
+                    $sqlFirstN = "UPDATE utilisateurs SET firstname = '$firstname' WHERE id = '$sessionId'";
+                    $rs = $this->conn->query($sqlFirstN);
 
-            $sqlFirstN = "UPDATE utilisateurs SET firstname = '$firstname' WHERE id = '$sessionId'";
-            $rs = $this->conn->query($sqlFirstN);
+                    $_SESSION['firstname'] = $firstname;
+                    $this->firstname = $firstname;
 
-            $_SESSION['firstname'] = $firstname;
-            $this->firstname = $firstname;
+                    echo '<strong>Success!</strong> Your first name has been edited<br>';
 
-            echo '<strong>Success!</strong> Your first name has been edited<br>';
+                }
+                    
+                if ($_SESSION['lastname'] != $lastname){
 
-        }
-            
-        if ($_SESSION['lastname'] != $lastname){
+                    $sqlLastN = "UPDATE utilisateurs SET lastname = '$lastname' WHERE id = '$sessionId'";
+                    $rs = $this->conn->query($sqlLastN);
 
-            $sqlLastN = "UPDATE utilisateurs SET lastname = '$lastname' WHERE id = '$sessionId'";
-            $rs = $this->conn->query($sqlLastN);
+                    $_SESSION['lastname'] = $lastname;
+                    $this->lastname = $lastname;
 
-            $_SESSION['lastname'] = $lastname;
-            $this->lastname = $lastname;
+                    echo '<strong>Success!</strong> Your last name has been edited<br>';
 
-            echo '<strong>Success!</strong> Your last name has been edited<br>';
+                }
 
-        }
+            }else{ echo '<strong>Error!</strong> Wrong password<br>'; }
 
+        }else{ echo '<strong>Error!</strong> Please login to change your infos'; }
+        
     }
 
     public function IsConnected() {
@@ -281,8 +297,11 @@ class User
 }
 
 $newUser = new User();
-//$newUser->Register('leadbs', 'azerty', 'unemail@gmail.com', 'Léa', 'Dubois');
+//$newUser->Register('leadbs', 'azerty', 'azerty', 'unemail@gmail.com', 'Léa', 'Dubois');
 //$newUser->Connect('leadbs', 'azerty');
+//$newUser->Update('leadbs', 'azer', '', '', 'unemail@gmail.com', 'Léa', 'Dubois');
+//$newUser->Update('lea', 'azerty', 'azer','azer', 'unemail@gmail.com', 'Lea', 'DuboiS');
+//echo $newUser->GetEmail();
 //$newUser->Disconnect();
 //$newUser->Delete();
 var_dump($_SESSION);
