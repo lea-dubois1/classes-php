@@ -24,7 +24,7 @@ class User
             // On définit le mode d'erreur de PDO sur Exception
             $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-            echo 'You are connected to the database<br>';
+            echo "You are connected to the database <br>";
         }
 
         // On capture les exceptions si une exception est lancée
@@ -39,6 +39,12 @@ class User
 
     public function Register($login, $password, $passwordConfirm, $email, $firstname, $lastname) {
 
+        $error = "";
+        $errorLogin = "";
+        $errorPassword = "";
+        $errorEmail = "";
+        $errorNames = "";
+
         $sql = "SELECT * FROM utilisateurs WHERE login=:login";
         
         // Check if a line with the same login exist in our Database.
@@ -46,40 +52,76 @@ class User
         $req->execute(array(':login' => $login));
         $row = $req->rowCount();
         
-        if($row <= 0) {     // If the login do not exist in the Database, we check the password
+        if($row <= 0) {     // If the login do not exist in the Database, we check the passwords
 
-            if(($password == $passwordConfirm)) {    // If the password match the password's confirmation
-                
-                // Cripting the password
-                $hash = password_hash($password, PASSWORD_DEFAULT);
+            if(strlen($login) >= 4 && !preg_match("[\W]", $login) && strlen($password) >= 5 && preg_match("/@/", $email) && preg_match("/\./", $email) && strlen($firstname) >= 2 && !preg_match("[\W]", $firstname) && strlen($lastname) >= 2 && !preg_match("[\W]", $lastname)) {
 
-                // Cripting the password
-                $hash = password_hash($password, PASSWORD_DEFAULT);
-                
-                // Add data to the database 
-                $sql = "INSERT INTO `utilisateurs` (`login`, `password`, `email`, `firstname`, `lastname`) VALUES (:login, :pass, :email, :firstname, :lastname)";
-                $req = $this->conn->prepare($sql);
-                $req->execute(array(':login' => $login,
-                                    ':pass' => $hash,
-                                    ':email' => $email,
-                                    ':firstname' => $firstname,
-                                    ':lastname' => $lastname));
+                if($password == $passwordConfirm) {
+                    
+                    // Cripting the password
+                    $hash = password_hash($password, PASSWORD_DEFAULT);
 
-                echo '<strong>Success!</strong> Your account is now created and you can login.';
-                                    
-                $userData = [
-                    'login' => $login,
-                    'password' => $hash,
-                    'email' => $email,
-                    'firstname' => $firstname,
-                    'lastname' => $lastname,
-                ];
+                    // Cripting the password
+                    $hash = password_hash($password, PASSWORD_DEFAULT);
+                    
+                    // Add data to the database 
+                    $sql = "INSERT INTO `utilisateurs` (`login`, `password`, `email`, `firstname`, `lastname`) VALUES (:login, :pass, :email, :firstname, :lastname)";
+                    $req = $this->conn->prepare($sql);
+                    $req->execute(array(':login' => $login,
+                                        ':pass' => $hash,
+                                        ':email' => $email,
+                                        ':firstname' => $firstname,
+                                        ':lastname' => $lastname));
 
-                return $userData;
+                    echo '<strong>Success!</strong> Your account is now created and you can login <br>';
+                                        
+                    $userData = [
+                        'login' => $login,
+                        'password' => $hash,
+                        'email' => $email,
+                        'firstname' => $firstname,
+                        'lastname' => $lastname,
+                    ];
 
-            }else{ echo "The passwords do not match"; }
+                    return $userData;
+
+                }else{ $error = 'The passwords do not match <br>'; }
+
+            }else{
+
+                // Login errors
+                if(strlen($login) < 4 || preg_match("[\W]", $login)) {
+
+                    $errorLogin = "Your login must contain at least 4 caracters and no specials caracters <br>";
+
+                }
+
+                // Password errors
+                if(strlen($password) < 5) {
+
+                    $errorPassword = "Your password must contain at least 5 caracters <br>";
+
+                }
+
+                // Email errors
+                if(!preg_match("/@/", $email) || !preg_match("/\./", $email)) {
+
+                    $errorEmail = "Your email is not valid. It must contain '@' and '.' <br>";
+
+                }
+
+                // First and last name errors
+                if(strlen($firstname) < 2 || preg_match("[\W]", $firstname) || strlen($lastname) < 2 || preg_match("[\W]", $lastname)) {
+
+                    $errorNames = "Your first and last names must contain at least 2 caracters and no specials caracters <br>";
+
+                }
+
+            }
             
-        }else{ echo '<strong>Error!</strong> The login already exist. Please choose another one.'; }
+        }else{ $error = '<strong>Error!</strong> The login already exist. Please choose another one <br>'; }
+
+        return $error . $errorLogin . $errorPassword . $errorEmail . $errorNames;
 
     }
 
@@ -107,13 +149,13 @@ class User
                 $_SESSION['firstname'] = $tab['firstname'];
                 $_SESSION['lastname'] = $tab['lastname'];
 
-                echo '<strong>Success!</strong> You\'re connected';
+                echo '<strong>Success!</strong> You\'re connected<br>';
 
             }else{    // If the password do not match, error
-                echo '<strong>Error!</strong> Wrong password';
+                echo '<strong>Error!</strong> Wrong password<br>';
             }
         }else{    // If the login do not exist, error
-            echo '<strong>Error!</strong> The login do not exist. You don\'t have an account? <a href=\"inscription.php\">Signup</a>';
+            echo '<strong>Error!</strong> The login do not exist. You don\'t have an account? <a href=\"inscription.php\">Signup</a><br>';
         }
 
     }
@@ -150,6 +192,13 @@ class User
 
     public function Update($login, $password, $passwordNew, $passwordNewConfirm, $email, $firstname, $lastname) {
 
+        $error = "";
+        $errorLogin = "";
+        $errorPassword = "";
+        $errorEmail = "";
+        $errorFirstName = "";
+        $errorLastName = "";
+
         if ($_SESSION){
 
             // Set variables to use in the following request.
@@ -164,7 +213,7 @@ class User
 
             if(password_verify($password,$passwordTrue)){
 
-                if ($_SESSION['login'] != $login){
+                if ($_SESSION['login'] != $login && strlen($login) >= 4 && !preg_match("[\W]", $login)){
 
                     if($row!=1){
 
@@ -183,9 +232,13 @@ class User
 
                     }
 
+                }elseif(strlen($login) < 4 || preg_match("[\W]", $login)) {
+
+                    $errorLogin = "Your login must contain at least 4 caracters and no specials caracters <br>";
+
                 }
 
-                if (!empty($passwordNew) && !empty($passwordNewConfirm && $passwordNew == $passwordNewConfirm)){
+                if (!empty($passwordNew) && !empty($passwordNewConfirm && $passwordNew == $passwordNewConfirm && strlen($passwordNew) >= 5)){
 
                     $hash = password_hash($passwordNew, PASSWORD_DEFAULT);
 
@@ -195,45 +248,64 @@ class User
                     $_SESSION['password'] = $hash;
                     echo '<strong>Success!</strong> Your password has been edited<br>';
 
-                }elseif (!empty($passwordNew) && !empty($passwordNewConfirm)){
+                }elseif(strlen($passwordNew) < 5 and !empty($passwordNew)) {
+
+                    $errorPassword = "Your password must contain at least 5 caracters <br>";
+
+                }elseif (!empty($passwordNew) && empty($passwordNewConfirm)){
         
-                    echo "<strong>Error!</strong> Please confirm password";
+                    $errorPassword = "<strong>Error!</strong> Please confirm password";
         
                 }elseif(($passwordNew != $passwordNewConfirm)) {
     
-                    echo "<strong>Error!</strong> The passwords are differents";
+                    $errorPassword = "<strong>Error!</strong> The passwords are differents";
+
                 }
-                    
-                if ($_SESSION['email'] != $email){
+
+                if ($_SESSION['email'] != $email && preg_match("/@/", $email) && preg_match("/\./", $email)){
 
                     $sqlMail = "UPDATE utilisateurs SET email = '$email' WHERE id = '$sessionId'";
                     $rs = $this->conn->query($sqlMail);
                     $_SESSION['email'] = $email;
                     echo '<strong>Success!</strong> Your email has been edited<br>';
 
+                }elseif(!preg_match("/@/", $email) || !preg_match("/\./", $email)) {
+
+                    $errorEmail = "Your email is not valid. It must contain '@' and '.' <br>";
+
                 }
                     
-                if ($_SESSION['firstname'] != $firstname){
+                if ($_SESSION['firstname'] != $firstname && strlen($firstname) >= 2 && !preg_match("[\W]", $firstname)){
 
                     $sqlFirstN = "UPDATE utilisateurs SET firstname = '$firstname' WHERE id = '$sessionId'";
                     $rs = $this->conn->query($sqlFirstN);
                     $_SESSION['firstname'] = $firstname;
                     echo '<strong>Success!</strong> Your first name has been edited<br>';
 
+                }elseif(strlen($firstname) < 2 || preg_match("[\W]", $firstname)) {
+
+                    $errorFirstName = "Your first name must contain at least 2 caracters and no specials caracters <br>";
+
                 }
                     
-                if ($_SESSION['lastname'] != $lastname){
+                if ($_SESSION['lastname'] != $lastname && strlen($lastname) >= 2 && !preg_match("[\W]", $lastname)){
 
                     $sqlLastN = "UPDATE utilisateurs SET lastname = '$lastname' WHERE id = '$sessionId'";
                     $rs = $this->conn->query($sqlLastN);
                     $_SESSION['lastname'] = $lastname;
                     echo '<strong>Success!</strong> Your last name has been edited<br>';
 
+                }elseif(strlen($lastname) < 2 || preg_match("[\W]", $lastname)) {
+
+                    $errorLastName = "Your last name must contain at least 2 caracters and no specials caracters <br>";
+
                 }
 
-            }else{ echo '<strong>Error!</strong> Wrong password<br>'; }
+            }else{ $error = '<strong>Error!</strong> Wrong password <br>'; }
 
-        }else{ echo '<strong>Error!</strong> Please login to change your infos'; }
+        }else{ $error = '<strong>Error!</strong> Please login to change your infos <br>'; }
+
+        return $error . $errorLogin . $errorPassword . $errorEmail . $errorFirstName . $errorLastName;
 
     }
 
@@ -300,11 +372,11 @@ class User
 }
 
 $newUser = new User();
-//$newUser->Register('jujudbs', 'azerty', 'azerty', 'juju@gmail.com', 'Julie', 'Dubois');
-//$newUser->Connect('jujudbs', 'azerty');
-//$newUser->Update('leadbs', 'azerty', 'azer', 'azer', 'unemail@gmail.com', 'Léa', 'Dubois');
+//echo $newUser->Register('juju', 'azerty', 'azerty', 'juju@gmail.com', 'Julie', 'Dubois');
+//$newUser->Connect('juliedbs', 'azerty');
+//echo $newUser->Update('juliedbs', 'azerty', '', '', 'julie@gmail.com', 'Julie', 'Dubois');
 //$newUser->Update('lea', 'azerty', 'azer','azer', 'unemail@gmail.com', 'Lea', 'DuboiS');
-//echo $newUser->GetEmail();
+//echo $newUser->GetLogin();
 //$newUser->Disconnect();
 //$newUser->Delete();
 var_dump($_SESSION);

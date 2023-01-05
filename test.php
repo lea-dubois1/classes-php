@@ -20,6 +20,16 @@ class Fruit
     public function get_color() {
         return $this->color;
     }
+
+    public function testeuh() {
+
+        $part1 = "ceci est un message";
+        $part2 = " qui montre que ca marche";
+        $part3 = " tres bien";
+
+        return $part1 . $part2 . $part3 . '<br>';
+
+    }
 }
 
 // Objets (comme créer une classe "apple" et une classe "banana" avec chaqunes les mêmmes attibuts et méthodes que la fonction Fruit)
@@ -34,6 +44,7 @@ $apple->set_color('Red');
 // Return les valeurs pour les utiliser
 $apple->get_name();
 $apple->get_color();
+echo $apple->testeuh();
 
 // Autre façon de faire pour entrer les valeurs et les utiliser
 $banana->set_name('Banana');
